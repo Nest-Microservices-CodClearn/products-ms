@@ -1,14 +1,10 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PaginationDto } from 'src/common';
 import { NotFoundError } from 'rxjs';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class ProductsService extends PrismaClient implements OnModuleInit {
@@ -27,14 +23,14 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
   async findAll(paginationDto: PaginationDto) {
     const { page, limit } = paginationDto;
 
-    const totalPages = await this.product.count({where:{available:true}});
+    const totalPages = await this.product.count({ where: { available: true } });
     const lastPages = Math.ceil(totalPages / limit);
     //Mejorar para no permitir una pagina que no tenga más datos
     return {
       data: await this.product.findMany({
         skip: (page - 1) * limit,
         take: limit,
-        where: {available: true}
+        where: { available: true },
       }),
       meta: {
         total: totalPages,
@@ -46,17 +42,20 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
 
   async findOne(id: number) {
     const product = await this.product.findUnique({
-      where: { id: id, available:true },
-      
+      where: { id: id, available: true },
     });
 
     if (!product) {
-      throw new NotFoundException(`El producto con el id #${id} no existe`);
+      throw new RpcException({
+        message: `El producto con el id #${id} no existe`,
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
+    return product;
   }
 
   async update(id: number, updateProductDto: UpdateProductDto) {
-    const{id: __, ...data} = updateProductDto
+    const { id: __, ...data } = updateProductDto;
     await this.findOne(id);
     //Optimizarla para no aceptar solicitudes vacías
     return this.product.update({
@@ -72,11 +71,11 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
     //  where: { id },
     //});
     const product = await this.product.update({
-      where : {id},
-      data:{
-        available : false
-      }
-    })
+      where: { id },
+      data: {
+        available: false,
+      },
+    });
     return product;
   }
 }
