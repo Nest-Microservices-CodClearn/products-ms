@@ -88,7 +88,7 @@ export class ProductsService extends PrismaClient implements OnModuleInit {
         },
       },
     });
-    if (products.length == ids.length) {
+    if (products.length != ids.length) {
       throw new RpcException({
         mesagge: 'Some products were not found',
         status: HttpStatus.BAD_REQUEST,
